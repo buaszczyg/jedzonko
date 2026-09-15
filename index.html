@@ -317,7 +317,7 @@
     function updateArrow() {
       if (targetBearing === null) return;
       const rawRotation = deviceHeading === null ? targetBearing : targetBearing - deviceHeading;
-      displayRotation = lerpAngle(displayRotation, rawRotation, 0.15);
+      displayRotation = lerpAngle(displayRotation, rawRotation, 0.05);
       arrowContainer.style.transform = `rotate(${displayRotation}deg)`;
     }
 
