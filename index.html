@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Food Radar</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #121214;
+      color: #e4e4e7;
+    }
+
+    body {
+      display: grid;
+      min-height: 100svh;
+      margin: 0;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    main {
+      width: min(92vw, 36rem);
+      padding: 1.5rem;
+      border: 1px solid #27272a;
+      border-radius: 20px;
+      background: #18181b;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      color: #f97316;
+      font-size: clamp(1.8rem, 8vw, 2.8rem);
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      margin: 0.6rem 0 1rem;
+      color: #a1a1aa;
+      font-size: 0.95rem;
+    }
+
+    /* Kontener kompasu i lewitującej strzałki 3D */
+    .compass {
+      position: relative;
+      display: grid;
+      width: 11rem;
+      height: 11rem;
+      margin: 1.2rem auto;
+      place-items: center;
+      border-radius: 50%;
+      background: radial-gradient(circle, #202025 0%, #18181b 70%);
+      box-shadow: 
+        inset 0 4px 12px rgba(0, 0, 0, 0.6),
+        0 8px 24px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    /* Styl fake 3D dla strzałki (efekt lewitacji dzięki cieniom i warstwom) */
+    .arrow-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      transform: rotate(0deg);
+      transition: transform 3s cubic-bezier(0.1, 1, 0.1, 1); /* <--- TUTAJ JEST BŁĄD (300s) */
+    }
+
+    .arrow-3d {
+      position: relative;
+      width: 28px;
+      height: 85px;
+      /* Lewitujący cień pod strzałką dający głębię 3D */
+      filter: drop-shadow(0 12px 10px rgba(0, 0, 0, 0.6)) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.4));
+      transform-origin: 50% 70%;
+      transition: transform 250ms ease-out;
+    }
+
+    .arrow-head {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-bottom: 52px solid #f97316;
+      /* Subtelny gradient 3D na głowie strzałki */
+      filter: brightness(1.05);
+    }
+
+    /* Trójwymiarowy efekt połowy strzałki (cień wewnętrzny) */
+    .arrow-head::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 0px solid transparent;
+      border-bottom: 52px solid rgba(0, 0, 0, 0.2);
+    }
+
+    .arrow-body {
+      position: absolute;
+      bottom: 0;
+      left: 9px;
+      width: 10px;
+      height: 40px;
+      background: linear-gradient(to right, #c2410c, #f97316);
+      border-radius: 3px;
+    }
+
+    .main-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.4rem 0;
+    }
+
+    .circle-btn {
+      width: 6.5rem;
+      height: 6.5rem;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #f97316, #c2410c);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+      transition: transform 150ms ease, filter 150ms ease;
+    }
+
+    .circle-btn.secondary {
+      background: linear-gradient(135deg, #3f3f46, #27272a);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.1);
+    }
+
+    .circle-btn:hover:not(:disabled) {
+      transform: scale(1.06);
+      filter: brightness(1.1);
+    }
+
+    .circle-btn:disabled, .cat-btn:disabled {
+      cursor: wait;
+      opacity: 0.4;
+      transform: none;
+    }
+
+    .categories-title {
+      margin: 1.4rem 0 0.6rem;
+      font-size: 0.85rem;
+      color: #a1a1aa;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .categories-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .cat-btn {
+      padding: 0.55rem 1rem;
+      border: 1px solid #27272a;
+      border-radius: 20px;
+      background: #202025;
+      color: #d4d4d8;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .cat-btn:hover:not(:disabled) {
+      background: #27272a;
+      border-color: #f97316;
+      color: #f97316;
+      transform: translateY(-1px);
+    }
+
+    #status {
+      min-height: 2.4em;
+      margin: 0.8rem 0 0;
+      color: #a1a1aa;
+      font-size: 0.9rem;
+    }
+
+    #place {
+      display: none;
+      margin-top: 0.8rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: #202025;
+      border: 1px solid #27272a;
+      color: #f4f4f5;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    #place a {
+      color: #f97316;
+      text-decoration: none;
+    }
+
+    #place a:hover {
+      text-decoration: underline;
+    }
+
+    .distance {
+      display: block;
+      margin-top: 0.3rem;
+      color: #a1a1aa;
+      font-size: 0.85rem;
+      font-weight: 400;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Food Radar</h1>
+    <p class="subtitle">Wybierz co chcesz zjeść lub zdaj się na los!</p>
+    
+    <div class="compass" aria-label="Strzałka kierunku">
+      <div id="arrow-container" class="arrow-container">
+        <div class="arrow-3d">
+          <div class="arrow-head"></div>
+          <div class="arrow-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-actions">
+      <button id="btn-nearest" class="circle-btn" type="button" disabled>Najbliżej</button>
+      <button id="btn-random" class="circle-btn secondary" type="button" disabled>Losuj</button>
+    </div>
+
+    <div class="categories-title">Lub wybierz kategorię:</div>
+    <div class="categories-grid">
+      <button class="cat-btn" data-query="kebab" disabled>Kebab</button>
+      <button class="cat-btn" data-query="pizza" disabled>Pizza</button>
+      <button class="cat-btn" data-query="burger" disabled>Burger</button>
+      <button class="cat-btn" data-query="sushi" disabled>Sushi</button>
+      <button class="cat-btn" data-query="fast_food" disabled>Fast Food</button>
+      <button class="cat-btn" data-query="restaurant" disabled>Restauracja</button>
+    </div>
+
+    <p id="status" role="status" aria-live="polite">Pobieram Twoją lokalizację i bazę lokali w tle...</p>
+    <div id="place"></div>
+  </main>
+
+  <script>
+    const status = document.querySelector("#status");
+    const arrowContainer = document.querySelector("#arrow-container");
+    const place = document.querySelector("#place");
+    const interactiveElements = document.querySelectorAll("button");
+    const overpassUrl = "https://overpass-api.de/api/interpreter";
+    
+    let targetBearing = null;
+    let deviceHeading = null;
+    let userPosition = null;
+    let cachedVenues = [];
+    const categoryIndices = {};
+
+    function setStatus(message) {
+      status.textContent = message;
+    }
+
+    function toRadians(value) { return value * Math.PI / 180; }
+    function toDegrees(value) { return value * 180 / Math.PI; }
+
+    function distanceBetween(first, second) {
+      const earthRadius = 6371000;
+      const latitudeDelta = toRadians(second.latitude - first.latitude);
+      const longitudeDelta = toRadians(second.longitude - first.longitude);
+      const latitudeOne = toRadians(first.latitude);
+      const latitudeTwo = toRadians(second.latitude);
+      const value = Math.sin(latitudeDelta / 2) ** 2
+        + Math.cos(latitudeOne) * Math.cos(latitudeTwo) * Math.sin(longitudeDelta / 2) ** 2;
+      return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+    }
+
+    function bearingBetween(first, second) {
+      const latitudeOne = toRadians(first.latitude);
+      const latitudeTwo = toRadians(second.latitude);
+      const longitudeDelta = toRadians(second.longitude - first.longitude);
+      const y = Math.sin(longitudeDelta) * Math.cos(latitudeTwo);
+      const x = Math.cos(latitudeOne) * Math.sin(latitudeTwo)
+        - Math.sin(latitudeOne) * Math.cos(latitudeTwo) * Math.cos(longitudeDelta);
+      return (toDegrees(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function updateArrow() {
+      if (targetBearing === null) return;
+      const rotation = deviceHeading === null ? targetBearing : targetBearing - deviceHeading;
+      arrowContainer.style.transform = `rotate(${rotation}deg)`;
+    }
+
+    function handleOrientation(event) {
+      if (typeof event.webkitCompassHeading === "number") {
+        deviceHeading = event.webkitCompassHeading;
+      } else if (event.alpha !== null) {
+        deviceHeading = (360 - event.alpha) % 360;
+      }
+      updateArrow();
+    }
+
+    async function initCompass() {
+      if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+        try { await DeviceOrientationEvent.requestPermission(); } catch (e) {}
+      }
+      window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+      window.addEventListener("deviceorientation", handleOrientation, true);
+    }
+
+    function formatDistance(distance) {
+      return distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(1)} km`;
+    }
+
+    function getVenueCoordinates(element) {
+      return {
+        latitude: element.lat ?? element.center?.lat,
+        longitude: element.lon ?? element.center?.lon
+      };
+    }
+
+    async function preloadData() {
+      if (!window.isSecureContext && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        setStatus("Wymagane połączenie HTTPS do pobrania lokalizacji.");
+        return;
+      }
+
+      await initCompass();
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          userPosition = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+
+          setStatus("Pobieram bazę lokali z Overpass API...");
+
+          try {
+            const query = `[out:json][timeout:25];nwr(around:5000,${userPosition.latitude},${userPosition.longitude})[amenity~"fast_food|restaurant|bar|cafe|pub"];out center tags;`;
+            
+            const response = await fetch(`${overpassUrl}?data=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error("Serwis mapy jest chwilowo niedostępny.");
+
+            const data = await response.json();
+
+            const validElements = data.elements
+              .filter((el, index, arr) => arr.findIndex(item => item.type === el.type && item.id === el.id) === index)
+              .filter(el => (el.lat || el.center?.lat) && el.tags?.name);
+
+            cachedVenues = validElements.map((element) => {
+              const coordinates = getVenueCoordinates(element);
+              const name = element.tags.name;
+              const cuisine = (element.tags.cuisine || "").toLowerCase();
+              const amenity = (element.tags.amenity || "").toLowerCase();
+              const nameLower = name.toLowerCase();
+
+              return {
+                name: name,
+                coordinates,
+                distance: distanceBetween(userPosition, coordinates),
+                bearing: bearingBetween(userPosition, coordinates),
+                searchString: `${nameLower} ${cuisine} ${amenity}`
+              };
+            }).sort((a, b) => a.distance - b.distance);
+
+            if (cachedVenues.length === 0) {
+              throw new Error("Nie znaleziono żadnych lokali w okolicy.");
+            }
+
+            interactiveElements.forEach(btn => btn.disabled = false);
+            setStatus(`Gotowe! Pobrano ${cachedVenues.length} miejsc. Wybierz opcję.`);
+          } catch (error) {
+            console.error(error);
+            setStatus("Błąd pobierania danych z mapy. Spróbuj ponownie.");
+          }
+        },
+        (error) => {
+          setStatus("Brak dostępu do lokalizacji GPS. Zezwól na GPS w przeglądarce.");
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    function showVenue(venue) {
+      const mapUrl = `https://www.openstreetmap.org/?mlat=${venue.coordinates.latitude}&mlon=${venue.coordinates.longitude}#map=18/${venue.coordinates.latitude}/${venue.coordinates.longitude}`;
+      place.replaceChildren();
+      
+      const link = document.createElement("a");
+      link.href = mapUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = venue.name;
+      
+      const distance = document.createElement("span");
+      distance.className = "distance";
+      distance.textContent = `${formatDistance(venue.distance)} od Ciebie`;
+      
+      place.append(link, distance);
+      place.style.display = "block";
+    }
+
+    function handleSelection(type, query = "") {
+      if (cachedVenues.length === 0) {
+        setStatus("Brak danych w pamięci.");
+        return;
+      }
+
+      let pool = cachedVenues;
+      let stateKey = type;
+
+      if (type === 'category') {
+        const q = query.toLowerCase();
+        pool = cachedVenues.filter(v => v.searchString.includes(q));
+        stateKey = `cat_${q}`;
+        if (pool.length === 0) {
+          setStatus(`Nie znaleziono miejsc pasujących do: ${query}`);
+          place.style.display = "none";
+          targetBearing = null;
+          return;
+        }
+      }
+
+      let chosenVenue;
+      if (type === 'random') {
+        const randomIndex = Math.floor(Math.random() * cachedVenues.length);
+        chosenVenue = cachedVenues[randomIndex];
+      } else {
+        if (!(stateKey in categoryIndices)) {
+          categoryIndices[stateKey] = 0;
+        }
+
+        const currentIndex = categoryIndices[stateKey];
+        chosenVenue = pool[currentIndex];
+        categoryIndices[stateKey] = (currentIndex + 1) % pool.length;
+      }
+
+      targetBearing = chosenVenue.bearing;
+      updateArrow();
+      showVenue(chosenVenue);
+      setStatus(`Wybrano: ${chosenVenue.name}. Strzałka prowadzi do celu!`);
+    }
+
+    document.querySelector("#btn-nearest").addEventListener("click", () => handleSelection('nearest'));
+    document.querySelector("#btn-random").addEventListener("click", () => handleSelection('random'));
+
+    document.querySelectorAll(".cat-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const query = btn.getAttribute("data-query");
+        handleSelection('category', query);
+      });
+    });
+
+    window.addEventListener("DOMContentLoaded", preloadData);
+  </script>
+</body>
+</html>
